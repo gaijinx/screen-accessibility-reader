@@ -2,6 +2,8 @@ package com.screenaccessibilityreader;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
+import android.content.Intent;
+import android.os.Build;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -28,7 +30,6 @@ public class CustomAccessibilityService extends AccessibilityService {
 //        Log.d(TAG, this.getRootInActiveWindow().toString());
     }
 
-
     @Override
     public void onInterrupt() {
 
@@ -39,25 +40,41 @@ public class CustomAccessibilityService extends AccessibilityService {
     protected void onServiceConnected() {
         Log.d(TAG, "onServiceConnected");
         AccessibilityServiceInfo info = new AccessibilityServiceInfo();
-        // Set the type of events that this service wants to listen to. Others won't be passed to this service.
-        // We are only considering windows state changed event.
-//        info.eventTypes = AccessibilityEvent.TYPE_WINDOWS_CHANGED | AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
+
         info.eventTypes = AccessibilityEvent.TYPES_ALL_MASK;
-        // Set the type of feedback your service will provide. We are setting it to GENERIC.
+
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_ALL_MASK;
-        // Default services are invoked only if no package-specific ones are present for the type of AccessibilityEvent generated.
-        // This is a general-purpose service, so we will set some flags
+
         info.flags = AccessibilityServiceInfo.DEFAULT;
         info.flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS;
         info.flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
         info.flags = AccessibilityServiceInfo.FLAG_REQUEST_ENHANCED_WEB_ACCESSIBILITY;
-        info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
 
-        // We are keeping the timeout to 0 as we don’t need any delay or to pause our accessibility events
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+        }
+
         info.notificationTimeout = 0;
         this.setServiceInfo(info);
-        workerThread = new Thread(new ServiceServer(this));
+
+        // Start our custom Accessibility Server
+        workerThread = new ServiceServer(this);
         workerThread.start();
 
+
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "Destroy");
+        workerThread.interrupt();
+        super.onDestroy();
+    }
+
+    @Override
+    public boolean stopService(Intent name) {
+        Log.d(TAG, "Stopping");
+        workerThread.interrupt();
+        return super.stopService(name);
     }
 }
