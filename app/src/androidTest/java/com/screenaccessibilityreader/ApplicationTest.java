@@ -29,18 +29,32 @@ public class ApplicationTest extends ApplicationTestCase<Application> {
         UiDevice device = UiDevice.getInstance(instrumentation);
         ServerSocket serverSocket = new ServerSocket(65432);
         while (true) {
+            System.out.println("Waiting for connection");
             Socket s = serverSocket.accept();
             BufferedReader reader = new BufferedReader(new InputStreamReader(s.getInputStream()));
+            DataOutputStream outputStream = new DataOutputStream(s.getOutputStream());
+
+            System.out.println("Waiting for input");
             String cmd = reader.readLine();
+            System.out.println(cmd);
             if (cmd.equals("dump")){
                 ByteArrayOutputStream boas = new ByteArrayOutputStream();
-                device.dumpWindowHierarchy(s.getOutputStream());
-                s.close();
+                device.dumpWindowHierarchy(boas);
+                sendData(boas.toByteArray(), outputStream);
             } else if (cmd.equals("screenshot")) {
+                ByteArrayOutputStream boas = new ByteArrayOutputStream();
                 Bitmap bitmap = instrumentation.getUiAutomation().takeScreenshot();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 20, s.getOutputStream());
-                s.close();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 5, boas);
+                sendData(boas.toByteArray(), outputStream);
             }
+            reader.readLine();
+            s.close();
         }
     }
+
+    private void sendData(byte[] data, DataOutputStream outputStream) throws IOException {
+        outputStream.writeInt(data.length);
+        outputStream.write(data);
+    }
+
 }
